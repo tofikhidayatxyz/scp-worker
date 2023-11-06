@@ -3,7 +3,7 @@ import Drive from '@ioc:Adonis/Core/Drive'
 import { JobContract } from '@ioc:Rocketseat/Bull'
 import axios from 'axios'
 import * as googleTTS from 'google-tts-api'
-
+import { delay } from 'App/Libraries/utils'
 /*
 |--------------------------------------------------------------------------
 | Job setup
@@ -18,40 +18,61 @@ import * as googleTTS from 'google-tts-api'
 
 export default class TextToMp3 implements JobContract {
   public key = 'TextToMp3'
+  public concurrency = 1
 
   public async handle(job) {
     const { data } = job
 
-    console.log('[TEXT TO MP3] Start', data.uuid)
+    console.log('[TEXT TO MP3] Start', data.uuid, data.page)
+    if (!data?.text?.length || data?.text?.length < 10) {
+      console.log('[TEXT TO MP3] CANOT PROCESS', {
+        uuid: data.uuid,
+        text: data.text,
+        page: data.page,
+      })
+      return
+    }
+    const audioBuff = await this.createAudioBuff(data.text)
 
-    if (data.text && data.label) {
-      try {
-        const results = await googleTTS.getAllAudioBase64(data.text, {
-          lang: data?.lang || 'en',
-          slow: data?.slow || false,
-          host: 'https://translate.google.com',
-          splitPunct: ',.?;:!',
-        })
+    if (audioBuff) {
+      await Drive.put(`${data.uuid}/audios/${data.page}.mp3`, audioBuff)
+    }
 
-        let bufferData: any = []
+    let type = 'page'
+    if (data.page === 'summary') {
+      type = 'summary'
+    }
+    if (data.page === 'description') {
+      type = 'description'
+    }
 
-        for (const res of results) {
-          bufferData.push(Buffer.from(res.base64 as any, 'base64'))
-        }
+    await axios.post(`${Env.get('BACKEND_WEBHOOK_ENDPOINT')}/webhook/audio`, {
+      uuid: data.uuid,
+      type: type,
+      audio_id: data.page,
+      format: 'mp3',
+    })
 
-        const buf = Buffer.concat(bufferData)
+    console.log('[TEXT TO MP3] Finish', data.uuid, data.page)
+    await delay(500)
+  }
 
-        await Drive.put(`${data.uuid}/audios/${data.label}.mp3`, buf)
-      } catch (e) {}
-    } else {
-      for (let i = 1; i <= data.max; i++) {
+  public async onFailed(job, error) {
+    console.log('[TEXT TO MP3] FAILED', {
+      job,
+      error,
+    })
+  }
+
+  public async createAudioBuff(text: string, slow: boolean = false): Promise<Buffer | null> {
+    return new Promise(async (resolve) => {
+      let loop = 0
+      let max = 100000
+      while (true) {
         try {
-          console.log('[TEXT TO MP3] sub', i)
-          const textFile = await Drive.get(`${data.uuid}/texts/${i}.txt`)
-
-          const results = await googleTTS.getAllAudioBase64(textFile.toString(), {
-            lang: data?.lang || 'en',
-            slow: data?.slow || false,
+          const results = await googleTTS.getAllAudioBase64(text, {
+            lang: 'en',
+            slow: slow || false,
             host: 'https://translate.google.com',
             splitPunct: ',.?;:!',
           })
@@ -64,22 +85,18 @@ export default class TextToMp3 implements JobContract {
 
           const buf = Buffer.concat(bufferData)
 
-          await Drive.put(`${data.uuid}/audios/${i}.mp3`, buf)
-          console.log('[TEXT TO MP3] done', i)
-        } catch (e) {}
+          return resolve(buf)
+        } catch (e) {
+          console.log('TTS ERROR', {
+            message: e.message,
+          })
+          await delay(2000)
+        }
+        if (loop > max) {
+          return resolve(null)
+        }
+        loop++
       }
-      try {
-        await axios.post(Env.get('BACKEND_WEBHOOK_ENDPOINT'), {
-          uid: data.uuid,
-          summary: data.summary,
-          maxAudio: data.max,
-          format: 'mp3',
-        })
-      } catch (e) {
-        console.log(e)
-      }
-    }
-    console.log('[TEXT TO MP3] done', data.uuid)
-    // Do somethign with you job data
+    })
   }
 }

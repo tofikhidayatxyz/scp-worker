@@ -32,7 +32,8 @@
       "@rocketseat/adonis-bull",
       "@adonisjs/redis",
       "@adonisjs/lucid",
-      "@adonisjs/drive-s3"
+      "@adonisjs/drive-s3",
+      "@adonisjs/view"
     ]
   }
 }

@@ -3,8 +3,10 @@ import Drive from '@ioc:Adonis/Core/Drive'
 import { splitPDF } from 'pdf-toolz/SplitCombine'
 import pdfParse from 'pdf-parse'
 import TextCleaner from 'text-cleaner'
+import textRank from 'textrank'
+import TextSummaryzation from './TextSummaryzation'
 import TextToMp3 from './TextToMp3'
-import { SummarizerManager } from 'node-summarizer'
+import PdfDescription from './PdfDescription'
 
 /*
 |--------------------------------------------------------------------------
@@ -39,7 +41,24 @@ export default class PdfToText implements JobContract {
     let loop = 1
     let fullPdf = ''
 
+    const pagePassed: number[] = []
+
+    let pagesSum: any[] = []
+    let hasFirstPage = false
+
+    Bull.add(new PdfDescription().key, {
+      uuid: uuid,
+      title: data.title,
+      author: data.author,
+      category: data.category,
+      publisher: data.publisher,
+      description: data.description,
+    })
+
     for (const page of pages) {
+      // if (loop > 10) {
+      //   break
+      // }
       try {
         const pdfContent = await pdfParse(page)
 
@@ -74,8 +93,48 @@ export default class PdfToText implements JobContract {
           fullPdf += '\n' + pdfClean
         }
 
+        console.log('Processing -> ', loop, pdfClean.length)
+
         if (pdfClean.length >= MINIMUM_WORD_PER_PAGE) {
           await Drive.put(`${uuid}/texts/${loop}.txt`, pdfClean)
+          pagePassed.push(loop)
+
+          if (hasFirstPage === false) {
+            hasFirstPage = true
+          }
+
+          Bull.add(new TextToMp3().key, {
+            page: loop,
+            uuid: uuid,
+            text: pdfClean,
+          })
+
+          if (loop < 5) {
+            pagesSum.push({
+              page: loop,
+              text: await this.getSummary(pdfClean),
+            })
+          }
+          // Center of page
+          if (
+            loop > 5 &&
+            loop < pages.length - 5 &&
+            loop > Math.floor(pages.length) / 2 - 2 &&
+            loop < Math.ceil(pages.length) / 2 + 2
+          ) {
+            pagesSum.push({
+              page: loop,
+              text: await this.getSummary(pdfClean),
+            })
+          }
+
+          if (pages.length > 5 && loop < pages.length - 5) {
+            pagesSum.push({
+              page: loop,
+              text: await this.getSummary(pdfClean),
+            })
+          }
+
           loop++
         }
       } catch (e) {
@@ -84,22 +143,24 @@ export default class PdfToText implements JobContract {
     }
     console.log('[PDF TO TEXT] Done', uuid, loop)
 
-    const summarizer = new SummarizerManager(fullPdf, 10)
-    const textSummary = await summarizer.getSummaryByRank().then((c) => c.summary)
+    const uniqByPage = pagesSum.filter((v, i, a) => a.findIndex((t) => t.page === v.page) === i)
 
-    Bull.add(new TextToMp3().key, {
-      ...data,
-      max: loop,
-      summary: textSummary,
+    Bull.add(new TextSummaryzation().key, {
+      uuid: uuid,
+      content: uniqByPage,
+      title: data.title,
+      author: data.author,
+      category: data.category,
+      publisher: data.publisher,
+      description: data.description,
     })
+  }
 
-    await Drive.put(`${uuid}/texts/summary.txt`, textSummary)
+  private async getSummary(text: string) {
+    if (!text) return ''
 
-    Bull.add(new TextToMp3().key, {
-      ...data,
-      text: textSummary,
-      label: 'summary',
-    })
+    const summarizer = new textRank.TextRank(text)
+    return summarizer?.summarizedArticle || ''
   }
 
   public async onFailed(args: any) {
