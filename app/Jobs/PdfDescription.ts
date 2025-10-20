@@ -1,7 +1,5 @@
-import Env from '@ioc:Adonis/Core/Env'
 import Drive from '@ioc:Adonis/Core/Drive'
 import Bull, { JobContract } from '@ioc:Rocketseat/Bull'
-import axios from 'axios'
 import Gpt from 'App/Libraries/open-ai'
 import TextToMp3 from './TextToMp3'
 
@@ -25,7 +23,7 @@ export default class PdfDescription implements JobContract {
 
     const gptPrompt = `
     Human:
-    Write humanize description for this book:
+    Write humanize description for this ${data.type}:
     title : "${data.title}"
     author : "${data.author}"
     category : "${data.category}"
@@ -33,7 +31,7 @@ export default class PdfDescription implements JobContract {
     description : "${data.description}"
     You must be follow this rules:
     - content with minimum 100  words and max 500 words
-    - focus on the content of book and prevent halucination
+    - focus on the content of ${data.type} and prevent halucination
     - Just need text, no need to add image
     - I will render it to audio so you must be careful
     Assistant:

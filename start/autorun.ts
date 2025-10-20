@@ -1,3 +1,4 @@
+// import htmlToPdf from 'html-pdf'
 // // const OPEN_AI_TOKEN = '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'
 
 // import Bull from '@ioc:Rocketseat/Bull'
@@ -121,4 +122,38 @@
 //   content: randomtext,
 //   title: 'Just example title',
 //   uuid: '9961ff51-3430-4ab5-9f66-90767c0f6e01',
+// })
+
+let htmlData = ``
+
+let tmpl = `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.`
+
+for(let i =0; i < 100; i++) {
+    htmlData = htmlData+tmpl
+}
+
+// console.log(htmlData.length)
+
+// conversion({ html: htmlData }, async (_err, pdf) => {
+//    console.log(_err, pdf)
+// });
+
+// console.log('done')
+
+// const  callback = function (pdf) {
+//     console.log(pdf)
+// }
+
+
+// pdfPupeter(htmlData, callback, {}, {
+//     ignoreDefaultArgs: ['--no-sandbox', '--disable-setuid-sandbox'],
+//     waitForInitialPage: true
+// });
+
+// const options = { format: 'Letter' }
+
+
+// htmlToPdf.create(htmlData, options).toFile(`./tmp/sample.pdf`, async (err) => {
+//     if (err) return console.log(err)
+//     console.log('done')
 // })

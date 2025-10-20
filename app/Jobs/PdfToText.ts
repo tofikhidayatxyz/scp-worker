@@ -39,7 +39,7 @@ export default class PdfToText implements JobContract {
     const pages = await splitPDF(file)
 
     let loop = 1
-    let fullPdf = ''
+    // let fullPdf = ''
 
     const pagePassed: number[] = []
 
@@ -52,6 +52,8 @@ export default class PdfToText implements JobContract {
       author: data.author,
       category: data.category,
       publisher: data.publisher,
+      type: data.type,
+      human_summary: data.human_summary,
       description: data.description,
     })
 
@@ -89,9 +91,9 @@ export default class PdfToText implements JobContract {
           .filter(Boolean)
           .join(' ')
 
-        if (loop >= 2 && loop <= 100) {
-          fullPdf += '\n' + pdfClean
-        }
+        // if (loop >= 2 && loop <= 100) {
+        //   fullPdf += '\n' + pdfClean
+        // }
 
         console.log('Processing -> ', loop, pdfClean.length)
 
@@ -151,6 +153,7 @@ export default class PdfToText implements JobContract {
       title: data.title,
       author: data.author,
       category: data.category,
+      human_summary: data.human_summary,
       publisher: data.publisher,
       description: data.description,
     })

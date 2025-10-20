@@ -72,7 +72,7 @@ const responseFormat = {
 export default class SugestionsController {
   public async sugest({ request, response }: HttpContextContract) {
     const bookData = await axios.get(`${Env.get('BACKEND_API_ENDPOINT')}/api/v1/books`)
-    const categories = await axios.get(`${Env.get('BACKEND_API_ENDPOINT')}/api/v1/categories`)
+    // const categories = await axios.get(`${Env.get('BACKEND_API_ENDPOINT')}/api/v1/categories`)
 
     const finalBooksData = bookData.data?.data.map((book) => ({
       title: book.title,
@@ -80,11 +80,6 @@ export default class SugestionsController {
       path: `/books/${book.slug}`,
       queryText: book.title,
       category: book.category_name,
-    }))
-
-    const finalCategory = categories.data?.data.map((category) => ({
-      name: category.name,
-      path: `/books/search?category=${category.slug}`,
     }))
 
     const voiceText = request.input('speech', '')
